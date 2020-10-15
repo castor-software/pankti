@@ -2,6 +2,7 @@ package se.kth.castor.pankti.generate;
 
 import picocli.CommandLine;
 import se.kth.castor.pankti.generate.generators.TestGenerator;
+import se.kth.castor.pankti.generate.serializers.Serializer;
 import spoon.MavenLauncher;
 import spoon.reflect.CtModel;
 import spoon.support.compiler.SpoonPom;
@@ -33,6 +34,14 @@ public class PanktiGenMain implements Callable<Integer> {
     private Path objectXMLDirectoryPath;
 
     @CommandLine.Option(
+            names = {"-d", "--serializer"},
+            defaultValue = "xstream",
+            paramLabel = "SERIALIZER",
+            description = "Specify the format that is used in the generated tests, " +
+                    "default: ${DEFAULT-VALUE}, candidates values: ${COMPLETION-CANDIDATES}")
+    private Serializer serializer;
+
+    @CommandLine.Option(
             names = {"-h", "--help"},
             description = "Display help/usage.",
             usageHelp = true)
@@ -42,13 +51,6 @@ public class PanktiGenMain implements Callable<Integer> {
 
     public Path getProjectPath() {
         return projectPath;
-    }
-
-    public PanktiGenMain(final Path projectPath, final Path methodCSVFilePath, final Path objectXMLDirectoryPath, final boolean help) {
-        this.projectPath = projectPath;
-        this.methodCSVFilePath = methodCSVFilePath;
-        this.objectXMLDirectoryPath = objectXMLDirectoryPath;
-        this.usageHelpRequested = help;
     }
 
     public Integer call() {
@@ -65,7 +67,7 @@ public class PanktiGenMain implements Callable<Integer> {
         System.out.println("POM found at: " + projectPom.getPath());
         System.out.println("Number of Maven modules: " + projectPom.getModel().getModules().size());
 
-        TestGenerator testGenerator = new TestGenerator();
+        TestGenerator testGenerator = new TestGenerator(this.serializer);
         System.out.println("Number of new test cases: " + testGenerator.process(model, launcher,
                 methodCSVFilePath.toString(), objectXMLDirectoryPath.toString()));
 

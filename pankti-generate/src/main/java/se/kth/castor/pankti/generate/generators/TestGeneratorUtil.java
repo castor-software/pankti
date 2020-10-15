@@ -1,6 +1,10 @@
 package se.kth.castor.pankti.generate.generators;
 
+import com.thoughtworks.xstream.XStream;
 import se.kth.castor.pankti.generate.parsers.InstrumentedMethod;
+import se.kth.castor.pankti.generate.serializers.ISerializer;
+import se.kth.castor.pankti.generate.serializers.Serializer;
+import se.kth.castor.pankti.generate.serializers.impl.XStreamSerializer;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtLocalVariable;
 import spoon.reflect.code.CtStatement;
@@ -10,6 +14,7 @@ import spoon.reflect.reference.CtTypeReference;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class TestGeneratorUtil {
@@ -85,5 +90,23 @@ public class TestGeneratorUtil {
     // Gets method param list as _param1,param2,param3
     public String getParamListPostFix(InstrumentedMethod instrumentedMethod) {
             return  "_" + String.join(",", instrumentedMethod.getParamList());
+    }
+
+    public String transformObjectStrings (String objectStr, ISerializer serializer) {
+        if (objectStr.equals("")) { return objectStr; }
+
+        String result = null;
+
+        if (serializer instanceof XStreamSerializer) {
+            result = objectStr;
+        } else {
+            // deserialize the string using xStream
+            XStream xStream = new XStream();
+            Object object = xStream.fromXML(objectStr);
+            // serialize the object into the target format
+            result = serializer.serializeObjectToString(object);
+        }
+
+        return result;
     }
 }
