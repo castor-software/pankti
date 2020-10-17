@@ -40,8 +40,9 @@ public class TestGenerator {
 
     private final TestGeneratorUtil testGenUtil = new TestGeneratorUtil();
     private ISerializer testGenSerializer;
+    private List<File> classfiles;
 
-    public TestGenerator(Serializer serializer) {
+    public TestGenerator(Serializer serializer, List<File> classfiles) {
         switch (serializer) {
             case xstream:
                 this.testGenSerializer = new XStreamSerializer();
@@ -50,6 +51,7 @@ public class TestGenerator {
                 this.testGenSerializer = new GSONSerializer();
                 break;
         }
+        this.classfiles = classfiles;
     }
 
     public String getGeneratedClassName(CtPackage ctPackage, String className) {
@@ -346,23 +348,30 @@ public class TestGenerator {
         generatedMethod.addThrownType(factory.createCtTypeReference(Exception.class));
 
         // Get serialized objects as XML strings
-        // Transform the XML strings to the target format based on the chosen serializer
-        // (The strings stay the same if the serializer is xStream)
-        String receivingXML = testGenUtil.transformObjectStrings(serializedObject.getReceivingObject(), this.testGenSerializer);
+        String receivingXML = serializedObject.getReceivingObject();
         String receivingObjectType = serializedObject.getObjectType(receivingXML);
-        String returnedXML = testGenUtil.transformObjectStrings(serializedObject.getReturnedObject(), this.testGenSerializer);
+        String returnedXML = serializedObject.getReturnedObject();
         String returnedObjectType = instrumentedMethod.getReturnType();
 
         String paramsXML = "";
         if (instrumentedMethod.hasParams()) {
-            paramsXML = testGenUtil.transformObjectStrings(serializedObject.getParamObjects(), this.testGenSerializer);
+            paramsXML = testGenUtil.transformObjectStrings(serializedObject.getParamObjects(), this.testGenSerializer, this.classfiles);
+        }
+
+        // Transform the XML strings to the target format based on the chosen serializer
+        // (The strings stay the same if the serializer is xStream)
+        String receivingObjectStr = testGenUtil.transformObjectStrings(receivingXML, this.testGenSerializer, this.classfiles);
+        String returnedObjectStr = testGenUtil.transformObjectStrings(returnedXML, this.testGenSerializer, this.classfiles);
+        String paramsObjectStr = "";
+        if (paramsXML.length() > 0) {
+            paramsObjectStr = testGenUtil.transformObjectStrings(paramsXML, this.testGenSerializer, this.classfiles);
         }
 
         CtBlock<?> methodBody = factory.createBlock();
 
         List<CtStatement> statementsInMethodBody =
                 generateStatementsInMethodBody(instrumentedMethod, method, methodCounter, serializedObject,
-                        receivingXML, receivingObjectType, returnedXML, returnedObjectType, paramsXML, launcher);
+                        receivingObjectStr, receivingObjectType, returnedObjectStr, returnedObjectType, paramsObjectStr, launcher);
 
         statementsInMethodBody.forEach(methodBody::addStatement);
         generatedMethod.setBody(methodBody);

@@ -7,7 +7,9 @@ import spoon.MavenLauncher;
 import spoon.reflect.CtModel;
 import spoon.support.compiler.SpoonPom;
 
+import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 @CommandLine.Command(
@@ -34,12 +36,21 @@ public class PanktiGenMain implements Callable<Integer> {
     private Path objectXMLDirectoryPath;
 
     @CommandLine.Option(
-            names = {"-d", "--serializer"},
+            names = {"-s", "--serializer"},
             defaultValue = "xstream",
             paramLabel = "SERIALIZER",
             description = "Specify the format that is used in the generated tests, " +
                     "default: ${DEFAULT-VALUE}, candidates values: ${COMPLETION-CANDIDATES}")
     private Serializer serializer;
+
+    @CommandLine.Option(
+            names = {"--classfiles"},
+            type = File.class,
+            paramLabel = "PATH_TO_CLASSFILES",
+            description = "Specify the path to a folder/jar that contains the class files in the target project. " +
+                    "This needs to be specified if the serializer is not xstream. " +
+                    "This option could be specified multiple times.")
+    private List<File> classfiles;
 
     @CommandLine.Option(
             names = {"-h", "--help"},
@@ -57,17 +68,22 @@ public class PanktiGenMain implements Callable<Integer> {
         if (usageHelpRequested) {
             return 1;
         }
+        if (this.serializer != Serializer.xstream && this.classfiles == null) {
+            System.out.println("ERROR: The path to target project's classfiles should be specified if the serializer is not xstream.");
+            return 1;
+        }
         final String path = this.projectPath.toString();
         final String name = this.projectPath.getFileName().toString();
         PanktiGenLauncher panktiGenLauncher = new PanktiGenLauncher();
         MavenLauncher launcher = panktiGenLauncher.getMavenLauncher(path, name);
+        // SpoonPom is nice! Later we could analyze the target project's pom file, to see if there exists any serializer already.
         SpoonPom projectPom = launcher.getPomFile();
 
         CtModel model = panktiGenLauncher.buildSpoonModel(launcher);
         System.out.println("POM found at: " + projectPom.getPath());
         System.out.println("Number of Maven modules: " + projectPom.getModel().getModules().size());
 
-        TestGenerator testGenerator = new TestGenerator(this.serializer);
+        TestGenerator testGenerator = new TestGenerator(this.serializer, this.classfiles);
         System.out.println("Number of new test cases: " + testGenerator.process(model, launcher,
                 methodCSVFilePath.toString(), objectXMLDirectoryPath.toString()));
 

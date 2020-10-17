@@ -12,7 +12,7 @@ public class GSONSerializer implements ISerializer {
     }
 
     @Override
-    public Object deserializeObjectFromString(String objStr) {
-        return null;
+    public Object deserializeObjectFromString(String objStr, Class klass) {
+        return gson.fromJson(objStr, klass);
     }
 }
